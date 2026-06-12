@@ -45,7 +45,6 @@ config.local.yml
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
-frontend/pnpm-lock.yaml
 
 # Generated
 internal/ent/
