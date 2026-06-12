@@ -1,294 +1,380 @@
-# Docker 部署指南
+# Docker 部署完全指南
 
-## 快速启动
+本文档提供 AxonHubPlus 的完整 Docker 部署方案，包括开发、测试和生产环境的最佳实践。
 
-### 使用 PostgreSQL（推荐）
+---
 
-1. **克隆仓库**
+## 📋 目录
+
+- [前置要求](#-前置要求)
+- [快速开始](#-快速开始)
+- [部署方案](#-部署方案)
+- [数据库配置](#-数据库配置)
+- [环境变量](#-环境变量)
+- [生产环境部署](#-生产环境部署)
+- [运维操作](#-运维操作)
+- [常见问题](#-常见问题)
+
+---
+
+## 📦 前置要求
+
+| 软件 | 最低版本 | 推荐版本 |
+|------|----------|----------|
+| Docker | 20.10+ | 24.0+ |
+| Docker Compose | 2.0+ | 2.20+ |
+| 可用内存 | 2GB | 4GB+ |
+| 可用磁盘 | 5GB | 10GB+ |
+
+**检查安装**：
 ```bash
-git clone https://github.com/YOUR_USERNAME/axonhub.git
-cd axonhub
+docker --version
+docker-compose --version
 ```
 
-2. **配置环境变量**
-```bash
-# 创建 .env 文件
-cat > .env << EOF
-DB_PASSWORD=your_secure_password
-EOF
-```
+---
 
-3. **启动服务**
+## 🚀 快速开始
+
+### 30 秒启动
+
 ```bash
+# 1. 克隆仓库
+git clone https://github.com/ifsherlock/axonhubplus.git
+cd axonhubplus
+
+# 2. 启动服务
 docker-compose up -d
+
+# 3. 等待服务就绪（约 30-60 秒）
+docker-compose logs -f axonhub
+
+# 4. 访问系统
+open http://localhost:8090
 ```
 
-4. **查看日志**
+**预期输出**：
+```
+axonhub-1  | Starting AxonHub server on :8090
+axonhub-1  | Database migration completed successfully
+axonhub-1  | Server is ready to accept connections
+```
+
+✅ 访问 http://localhost:8090 开始使用！
+
+---
+
+## 📚 部署方案
+
+### 方案一：Docker Compose + PostgreSQL（推荐生产环境）
+
+**适用场景**：生产环境、多用户、大流量
+
+#### 1. 使用默认配置
+
 ```bash
+# 启动 PostgreSQL + AxonHub
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+```
+
+输出示例：
+```
+NAME                    IMAGE                    STATUS
+axonhubplus-axonhub-1   axonhub:latest          Up (healthy)
+axonhubplus-postgres-1  postgres:17-alpine      Up (healthy)
+```
+
+#### 2. 自定义配置
+
+创建 `.env` 文件：
+```bash
+# 数据库密码
+DB_PASSWORD=your_secure_password_here
+
+# 服务端口（可选）
+AXONHUB_PORT=8090
+```
+
+修改 `docker-compose.yml` 中的数据库配置：
+```yaml
+environment:
+  POSTGRES_PASSWORD: ${DB_PASSWORD}
+  POSTGRES_USER: axonhub
+  POSTGRES_DB: axonhub
+```
+
+#### 3. 查看日志
+
+```bash
+# 所有服务日志
+docker-compose logs -f
+
+# 只看 AxonHub 日志
+docker-compose logs -f axonhub
+
+# 只看最近 100 行
+docker-compose logs --tail=100 axonhub
+```
+
+#### 4. 管理服务
+
+```bash
+# 停止服务（数据保留）
+docker-compose stop
+
+# 重启服务
+docker-compose restart
+
+# 停止并删除容器（数据保留在 volume）
+docker-compose down
+
+# 完全清理（删除所有数据）
+docker-compose down -v
+```
+
+---
+
+### 方案二：Docker Compose + SQLite（适合开发/小型部署）
+
+**适用场景**：个人使用、开发测试、轻量部署
+
+#### 1. 修改配置
+
+编辑 `docker-compose.yml`，修改 axonhub 服务的环境变量：
+```yaml
+services:
+  axonhub:
+    environment:
+      - AXONHUB_DB_DIALECT=sqlite3
+      - AXONHUB_DB_DSN=file:/data/axonhub.db?cache=shared&_fk=1
+    volumes:
+      - ./data:/data
+```
+
+#### 2. 启动服务
+
+```bash
+# 创建数据目录
+mkdir -p data
+
+# 启动（无需 PostgreSQL）
+docker-compose up -d axonhub
+
+# 查看日志
 docker-compose logs -f axonhub
 ```
 
-5. **访问服务**
-- 前端界面：http://localhost:8090
-- GraphQL API：http://localhost:8090/graphql
-- 健康检查：http://localhost:8090/health
-
-### 使用 SQLite（简单部署）
-
-1. **创建数据目录**
-```bash
-mkdir -p data
-chmod 777 data
-```
-
-2. **修改 docker-compose.yml**
-```bash
-# 注释掉 postgres 和 axonhub 服务
-# 取消注释 axonhub-sqlite 服务
-```
-
-3. **启动服务**
-```bash
-docker-compose up -d axonhub-sqlite
-```
-
 ---
 
-## 从源码构建
+### 方案三：使用 GitHub Container Registry 镜像
 
-### 方式一：使用 Docker
+**适用场景**：快速部署、生产环境
+
+等待 GitHub Actions 构建完成后（约 10-15 分钟）：
+
+#### PostgreSQL 版本
 
 ```bash
-# 构建镜像
-docker build -t axonhub:latest .
-
-# 运行容器
+# 1. 启动 PostgreSQL
 docker run -d \
-  -p 8090:8090 \
-  -e AXONHUB_DB_DIALECT=sqlite3 \
-  -e AXONHUB_DB_DSN="file:/data/axonhub.db?cache=shared&_fk=1" \
-  -v $(pwd)/data:/data \
+  --name axonhub-postgres \
+  -e POSTGRES_USER=axonhub \
+  -e POSTGRES_PASSWORD=your_password \
+  -e POSTGRES_DB=axonhub \
+  -v axonhub-postgres-data:/var/lib/postgresql/data \
+  postgres:17-alpine
+
+# 2. 启动 AxonHub
+docker run -d \
   --name axonhub \
-  axonhub:latest serve
+  -p 8090:8090 \
+  -e AXONHUB_DB_DIALECT=postgres \
+  -e AXONHUB_DB_DSN="postgres://axonhub:your_password@axonhub-postgres:5432/axonhub?sslmode=disable" \
+  --link axonhub-postgres:postgres \
+  ghcr.io/ifsherlock/axonhubplus:main serve
+
+# 3. 查看日志
+docker logs -f axonhub
 ```
 
-### 方式二：使用 GitHub Container Registry
-
-推送到 GitHub 后，Actions 会自动构建并推送镜像：
+#### SQLite 版本（最简单）
 
 ```bash
-# 拉取镜像
-docker pull ghcr.io/YOUR_USERNAME/axonhub:main
+# 创建数据目录
+mkdir -p data
 
-# 使用镜像
+# 一行命令启动
 docker run -d \
+  --name axonhub \
   -p 8090:8090 \
   -e AXONHUB_DB_DIALECT=sqlite3 \
   -e AXONHUB_DB_DSN="file:/data/axonhub.db?cache=shared&_fk=1" \
   -v $(pwd)/data:/data \
-  ghcr.io/YOUR_USERNAME/axonhub:main serve
+  ghcr.io/ifsherlock/axonhubplus:main serve
+
+# 查看日志
+docker logs -f axonhub
 ```
 
 ---
 
-## 配置说明
+### 方案四：从源码构建（开发环境）
 
-### 环境变量
+```bash
+# 1. 构建镜像
+docker build -t axonhub:dev .
 
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `AXONHUB_DB_DIALECT` | 数据库类型：`sqlite3`/`postgres`/`mysql` | `sqlite3` |
-| `AXONHUB_DB_DSN` | 数据库连接字符串 | - |
-| `AXONHUB_SERVER_PORT` | 服务端口 | `8090` |
-| `AXONHUB_LOG_LEVEL` | 日志级别：`debug`/`info`/`warn`/`error` | `info` |
-
-### PostgreSQL DSN 示例
+# 2. 运行
+docker run -d \
+  --name axonhub-dev \
+  -p 8090:8090 \
+  -e AXONHUB_DB_DIALECT=sqlite3 \
+  -e AXONHUB_DB_DSN="file:/data/axonhub.db?cache=shared&_fk=1" \
+  -v $(pwd)/data:/data \
+  axonhub:dev serve
 ```
-postgres://username:password@host:5432/database?sslmode=disable
+
+---
+
+## 🗄️ 数据库配置
+
+### PostgreSQL（推荐生产环境）
+
+**优点**：性能强、并发好、功能完整
+
+**DSN 格式**：
+```
+postgres://username:password@host:port/database?sslmode=disable
 ```
 
-### MySQL DSN 示例
+**Docker Compose 配置**：
+```yaml
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: axonhub
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: axonhub
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U axonhub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+```
+
+**连接参数**：
+- `sslmode=disable` - 开发环境（生产建议 `sslmode=require`）
+- `pool_max_conns=100` - 最大连接数
+- `pool_min_conns=10` - 最小连接数
+
+---
+
+### MySQL
+
+**优点**：兼容性好、生态丰富
+
+**DSN 格式**：
 ```
 username:password@tcp(host:3306)/database?charset=utf8mb4&parseTime=True&loc=Local
 ```
 
-### SQLite DSN 示例
+**Docker Compose 配置**：
+```yaml
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: axonhub
+      MYSQL_USER: axonhub
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+
+  axonhub:
+    environment:
+      - AXONHUB_DB_DIALECT=mysql
+      - AXONHUB_DB_DSN=axonhub:${DB_PASSWORD}@tcp(mysql:3306)/axonhub?charset=utf8mb4&parseTime=True
+
+volumes:
+  mysql-data:
+```
+
+---
+
+### SQLite（开发/小型部署）
+
+**优点**：零配置、单文件、轻量
+
+**DSN 格式**：
 ```
 file:/data/axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)
 ```
 
----
-
-## 高级配置
-
-### 使用配置文件
-
-创建 `config.yml`：
-
+**Docker 配置**：
 ```yaml
-server:
-  port: 8090
-  
-database:
-  dialect: postgres
-  dsn: postgres://axonhub:password@postgres:5432/axonhub?sslmode=disable
-  
-log:
-  level: info
-  format: json
+services:
+  axonhub:
+    environment:
+      - AXONHUB_DB_DIALECT=sqlite3
+      - AXONHUB_DB_DSN=file:/data/axonhub.db?cache=shared&_fk=1
+    volumes:
+      - ./data:/data
 ```
 
-挂载到容器：
-
-```yaml
-volumes:
-  - ./config.yml:/app/config.yml:ro
-```
+**参数说明**：
+- `cache=shared` - 多连接共享缓存
+- `_fk=1` - 启用外键约束
+- `_pragma=journal_mode(WAL)` - 启用 WAL 模式（提升并发）
 
 ---
 
-## 数据迁移
+## ⚙️ 环境变量
 
-### 自动迁移（推荐）
+### 核心配置
 
-容器启动时会自动运行 `migrate up`，无需手动干预。
+| 变量名 | 说明 | 默认值 | 示例 |
+|--------|------|--------|------|
+| `AXONHUB_DB_DIALECT` | 数据库类型 | `postgres` | `postgres` / `mysql` / `sqlite3` |
+| `AXONHUB_DB_DSN` | 数据库连接串 | - | `postgres://user:pass@host:5432/db` |
+| `AXONHUB_SERVER_PORT` | HTTP 端口 | `8090` | `8090` |
+| `AXONHUB_SERVER_HOST` | 监听地址 | `0.0.0.0` | `0.0.0.0` / `127.0.0.1` |
 
-### 手动迁移
+### 日志配置
+
+| 变量名 | 说明 | 默认值 | 可选值 |
+|--------|------|--------|--------|
+| `AXONHUB_LOG_LEVEL` | 日志级别 | `info` | `debug` / `info` / `warn` / `error` |
+| `AXONHUB_LOG_FORMAT` | 日志格式 | `json` | `json` / `console` |
+
+### 性能配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `AXONHUB_DB_MAX_OPEN_CONNS` | 最大数据库连接数 | `100` |
+| `AXONHUB_DB_MAX_IDLE_CONNS` | 最大空闲连接数 | `10` |
+| `AXONHUB_DB_CONN_MAX_LIFETIME` | 连接最大存活时间 | `1h` |
+
+### 完整示例
 
 ```bash
-# 升级到最新版本
-docker exec axonhub-app /app/axonhub migrate up
-
-# 回滚一个版本
-docker exec axonhub-app /app/axonhub migrate down 1
-
-# 查看迁移状态
-docker exec axonhub-app /app/axonhub migrate status
+# .env 文件
+DB_PASSWORD=your_secure_password
+AXONHUB_DB_DIALECT=postgres
+AXONHUB_DB_DSN=postgres://axonhub:your_secure_password@postgres:5432/axonhub?sslmode=disable
+AXONHUB_SERVER_PORT=8090
+AXONHUB_LOG_LEVEL=info
+AXONHUB_LOG_FORMAT=json
 ```
 
 ---
-
-## 生产环境部署
-
-### 1. 使用 HTTPS
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name axonhub.example.com;
-    
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    location / {
-        proxy_pass http://127.0.0.1:8090;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-### 2. 备份数据库
-
-**PostgreSQL**
-```bash
-docker exec axonhub-postgres pg_dump -U axonhub axonhub > backup.sql
-```
-
-**SQLite**
-```bash
-docker exec axonhub-sqlite-app sqlite3 /data/axonhub.db .dump > backup.sql
-```
-
-### 3. 恢复数据库
-
-**PostgreSQL**
-```bash
-cat backup.sql | docker exec -i axonhub-postgres psql -U axonhub axonhub
-```
-
-**SQLite**
-```bash
-cat backup.sql | docker exec -i axonhub-sqlite-app sqlite3 /data/axonhub.db
-```
-
-### 4. 监控和日志
-
-```bash
-# 查看容器状态
-docker-compose ps
-
-# 查看实时日志
-docker-compose logs -f
-
-# 查看资源使用
-docker stats axonhub-app
-
-# 健康检查
-curl http://localhost:8090/health
-```
-
----
-
-## 常见问题
-
-### 1. 容器启动失败
-
-检查日志：
-```bash
-docker-compose logs axonhub
-```
-
-### 2. 数据库连接失败
-
-确认数据库容器已启动并健康：
-```bash
-docker-compose ps
-docker-compose logs postgres
-```
-
-### 3. 前端页面无法访问
-
-检查端口映射：
-```bash
-docker-compose ps | grep 8090
-```
-
-### 4. 修改配置后不生效
-
-重启容器：
-```bash
-docker-compose restart axonhub
-```
-
----
-
-## 更新升级
-
-```bash
-# 拉取最新镜像
-docker-compose pull
-
-# 重启服务
-docker-compose up -d
-
-# 清理旧镜像
-docker image prune -f
-```
-
----
-
-## 卸载
-
-```bash
-# 停止并删除容器
-docker-compose down
-
-# 删除数据卷（会丢失所有数据）
-docker-compose down -v
-
-# 删除镜像
-docker rmi looplj/axonhub:latest
-```
