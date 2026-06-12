@@ -1,0 +1,43 @@
+enum ResponseProtectionAction {
+  mask
+  reject
+  failover
+}
+
+enum ResponseProtectionScope {
+  text
+}
+
+type ResponseProtectionSettings {
+  action: ResponseProtectionAction!
+  replacement: String
+  scopes: [ResponseProtectionScope!]!
+}
+
+type ResponseProtectionRulePreviewResult {
+  result: String!
+  hasMatch: Boolean!
+}
+
+input ResponseProtectionSettingsInput {
+  action: ResponseProtectionAction!
+  replacement: String
+  scopes: [ResponseProtectionScope!]
+}
+
+input ResponseProtectionRulePreviewInput {
+  pattern: String!
+  testText: String!
+  settings: ResponseProtectionSettingsInput!
+}
+
+extend type Mutation {
+  createResponseProtectionRule(input: CreateResponseProtectionRuleInput!): ResponseProtectionRule!
+  updateResponseProtectionRule(id: ID!, input: UpdateResponseProtectionRuleInput!): ResponseProtectionRule!
+  deleteResponseProtectionRule(id: ID!): Boolean!
+  updateResponseProtectionRuleStatus(id: ID!, status: ResponseProtectionRuleStatus!): Boolean!
+  bulkDeleteResponseProtectionRules(ids: [ID!]!): Boolean!
+  bulkEnableResponseProtectionRules(ids: [ID!]!): Boolean!
+  bulkDisableResponseProtectionRules(ids: [ID!]!): Boolean!
+  previewResponseProtectionRule(input: ResponseProtectionRulePreviewInput!): ResponseProtectionRulePreviewResult!
+}

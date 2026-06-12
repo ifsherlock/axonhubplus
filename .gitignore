@@ -1,0 +1,60 @@
+# Binaries
+axonhub
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependencies
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+*.db
+*.db-shm
+*.db-wal
+data/
+*.log
+
+# Config
+config.local.yml
+.env
+.env.local
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/pnpm-lock.yaml
+
+# Generated
+internal/ent/
+!internal/ent/schema/
+internal/server/gql/generated.go
+internal/server/gql/models_gen.go
+internal/server/gql/ent.graphql
+internal/server/gql/ent.resolvers.go
+
+# Coverage
+coverage.txt
+*.coverprofile
