@@ -72,6 +72,7 @@ type Dependencies struct {
 	ChannelProbeService            *biz.ChannelProbeService
 	PromptService                  *biz.PromptService
 	PromptProtectionRuleService    *biz.PromptProtectionRuleService
+	ResponseProtectionRuleService  *biz.ResponseProtectionRuleService
 	ProviderQuotaService           *biz.ProviderQuotaService
 	Scheduler                      *scheduler.Scheduler
 	DefaultSelector                *orchestrator.DefaultSelector
@@ -111,6 +112,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 			deps.ChannelProbeService,
 			deps.PromptService,
 			deps.PromptProtectionRuleService,
+			deps.ResponseProtectionRuleService,
 			deps.ProviderQuotaService,
 			deps.Scheduler,
 			deps.DefaultSelector,
