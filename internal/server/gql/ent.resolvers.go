@@ -745,7 +745,10 @@ func (r *requestExecutionResolver) Channel(ctx context.Context, obj *ent.Request
 
 // ID is the resolver for the id field.
 func (r *responseProtectionRuleResolver) ID(ctx context.Context, obj *ent.ResponseProtectionRule) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeResponseProtectionRule,
+		ID:   obj.ID,
+	}, nil
 }
 
 // ID is the resolver for the id field.
