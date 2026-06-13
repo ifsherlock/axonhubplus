@@ -125,6 +125,7 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		selector.cacheMu.Lock()
 		selector.associationCache = make(map[string]*associationCacheEntry)
 		selector.cacheMu.Unlock()
+		selector.ChannelService = newTestChannelServiceForChannels(client)
 
 		req := &llm.Request{Model: modelID}
 		candidates, err := selector.selectModelCandidates(ctx, req)
