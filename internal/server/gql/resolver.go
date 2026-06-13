@@ -113,6 +113,7 @@ func NewSchema(
 			channelProbeService:            channelProbeService,
 			promptService:                  promptService,
 			promptProtectionRuleService:    promptProtectionRuleService,
+			responseProtectionRuleService:  responseProtectionRuleService,
 			providerQuotaService:           providerQuotaService,
 			scheduler:                      scheduler,
 			modelFetcher:                   modelFetcher,
