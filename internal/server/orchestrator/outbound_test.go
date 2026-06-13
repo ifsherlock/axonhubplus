@@ -1120,3 +1120,29 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithMultipleModels(t *testin
 		require.False(t, outbound.CanRetry(httpErr))
 	})
 }
+
+func TestPersistentOutboundTransformer_CanRetry_ResponseProtectionFailoverSkipsSameChannelRetry(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{
+				Channel: channel,
+				Models: []biz.ChannelModelEntry{
+					{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+					{RequestModel: "gpt-4", ActualModel: "gpt-4-backup"},
+				},
+			},
+			CurrentModelIndex: 0,
+		},
+	}
+
+	require.False(t, outbound.CanRetry(biz.ErrResponseProtectionFailover))
+}

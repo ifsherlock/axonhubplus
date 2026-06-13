@@ -656,6 +656,8 @@
   "channels.dialogs.userAgentPassThrough.inherit": "Inherit from system",
   "channels.dialogs.userAgentPassThrough.enabled": "Enabled",
   "channels.dialogs.userAgentPassThrough.disabled": "Disabled",
+  "channels.dialogs.customUserAgent.label": "Custom User-Agent",
+  "channels.dialogs.customUserAgent.placeholder": "Leave empty to use pass-through or default User-Agent",
   "channels.dialogs.bodyPassThrough.label": "Pass-Through",
   "channels.dialogs.bodyPassThrough.inherit": "Inherit from system",
   "channels.dialogs.bodyPassThrough.enabled": "Enabled",

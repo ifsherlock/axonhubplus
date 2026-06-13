@@ -165,6 +165,10 @@ type ChannelSettings struct {
 	// When set to true/false, it overrides the global setting.
 	PassThroughUserAgent *bool `json:"passThroughUserAgent,omitempty"`
 
+	// CustomUserAgent sets a fixed User-Agent header for this channel.
+	// When non-empty, it takes precedence over User-Agent pass-through.
+	CustomUserAgent string `json:"customUserAgent,omitempty"`
+
 	// PassThroughBody controls whether to forward the original request body directly
 	// to the upstream provider and the raw provider response/stream directly to the client
 	// without re-serialization through the transform pipelines.

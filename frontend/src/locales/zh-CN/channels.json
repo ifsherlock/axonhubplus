@@ -656,6 +656,8 @@
   "channels.dialogs.userAgentPassThrough.inherit": "继承系统设置",
   "channels.dialogs.userAgentPassThrough.enabled": "已启用",
   "channels.dialogs.userAgentPassThrough.disabled": "已禁用",
+  "channels.dialogs.customUserAgent.label": "自定义 User-Agent",
+  "channels.dialogs.customUserAgent.placeholder": "留空时使用透传或默认 User-Agent",
   "channels.dialogs.bodyPassThrough.label": "透传",
   "channels.dialogs.bodyPassThrough.inherit": "继承系统设置",
   "channels.dialogs.bodyPassThrough.enabled": "已启用",

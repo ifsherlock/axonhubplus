@@ -356,6 +356,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [passThroughUserAgent, setPassThroughUserAgent] = useState<boolean | null>(() => {
     return initialRow?.settings?.passThroughUserAgent ?? null;
   });
+  const [customUserAgent, setCustomUserAgent] = useState(() => initialRow?.settings?.customUserAgent ?? '');
   const [passThroughBody, setPassThroughBody] = useState<boolean | null>(() => {
     return initialRow?.settings?.passThroughBody ?? null;
   });
@@ -1132,6 +1133,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (isEdit && currentRow) {
         const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
           passThroughUserAgent,
+          customUserAgent: customUserAgent.trim(),
           passThroughBody,
           retryableStatusCodes,
         });
@@ -1175,6 +1177,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const nextSettings = mergeChannelSettingsForUpdate(values.settings, {
           proxy: proxyConfig,
           passThroughUserAgent,
+          customUserAgent: customUserAgent.trim(),
           passThroughBody,
           retryableStatusCodes,
         });
@@ -1593,6 +1596,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setProxyUsername(initialRow?.settings?.proxy?.username || '');
             setProxyPassword(initialRow?.settings?.proxy?.password || '');
             setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
+            setCustomUserAgent(initialRow?.settings?.customUserAgent ?? '');
             setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             // Reset provider and API format state
@@ -2506,6 +2510,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <SelectItem value='disabled'>{t('channels.dialogs.userAgentPassThrough.disabled')}</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+                      </FormItem>
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                          {t('channels.dialogs.customUserAgent.label')}
+                        </FormLabel>
+                        <div className='space-y-1 md:col-span-6'>
+                          <Input
+                            value={customUserAgent}
+                            onChange={(event) => setCustomUserAgent(event.target.value)}
+                            placeholder={t('channels.dialogs.customUserAgent.placeholder')}
+                          />
                         </div>
                       </FormItem>
 

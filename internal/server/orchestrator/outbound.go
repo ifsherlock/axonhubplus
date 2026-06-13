@@ -563,6 +563,10 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
+	if errors.Is(err, biz.ErrResponseProtectionFailover) {
+		return false
+	}
+
 	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
 		return false
 	}

@@ -16,8 +16,15 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+const (
+	responseProtectionAlarmMessage = "Response blocked by response protection policy after exhausting failover channels. Please inspect upstream provider responses."
+	responseProtectionAlarmType    = "response_protection_error"
+	responseProtectionAlarmCode    = "response_protection_blocked"
+)
+
 func transformOrchestratorError(ctx context.Context, err error, orch *orchestrator.ChatCompletionOrchestrator) *httpclient.Error {
 	err = wrapQuotaExhaustedAsResponseError(err)
+	err = wrapResponseProtectionFailoverAsResponseError(err)
 	if orch != nil {
 		err = applyUpstreamErrorPolicy(ctx, err, orch.SystemService)
 		return orch.Inbound.TransformError(ctx, err)
@@ -38,6 +45,10 @@ func applyUpstreamErrorPolicy(ctx context.Context, err error, systemService *biz
 	var quotaErr *orchestrator.QuotaExhaustedError
 	if errors.As(err, &quotaErr) {
 		return err
+	}
+
+	if biz.IsResponseProtectionFailover(err) {
+		return wrapResponseProtectionFailoverAsResponseError(err)
 	}
 
 	policy := systemService.RetryPolicyOrDefault(ctx).UpstreamErrorPolicy
@@ -128,6 +139,10 @@ func (s *upstreamErrorStream) Err() error {
 		return nil
 	}
 
+	if biz.IsResponseProtectionFailover(err) {
+		return wrapResponseProtectionFailoverAsResponseError(err)
+	}
+
 	policy := s.systemService.RetryPolicyOrDefault(s.ctx).UpstreamErrorPolicy
 	if policy.Mode != "" && policy.Mode != biz.UpstreamErrorModePassthrough {
 		return applyUpstreamErrorPolicy(s.ctx, pipeline.WrapUpstreamError(err), s.systemService)
@@ -178,4 +193,19 @@ func firstNonEmpty(values ...string) string {
 	}
 
 	return ""
+}
+
+func wrapResponseProtectionFailoverAsResponseError(err error) error {
+	if err == nil || !biz.IsResponseProtectionFailover(err) {
+		return err
+	}
+
+	return &llm.ResponseError{
+		StatusCode: http.StatusBadGateway,
+		Detail: llm.ErrorDetail{
+			Message: responseProtectionAlarmMessage,
+			Type:    responseProtectionAlarmType,
+			Code:    responseProtectionAlarmCode,
+		},
+	}
 }

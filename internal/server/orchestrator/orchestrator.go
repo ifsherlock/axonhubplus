@@ -315,6 +315,22 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
 		defer cancel()
 
+		if biz.IsResponseProtectionFailover(err) {
+			fields := []log.Field{
+				log.String("requested_model", outbound.GetRequestedModel()),
+				log.String("current_model", outbound.GetCurrentModelID()),
+				log.Cause(err),
+			}
+			if ch := outbound.GetCurrentChannel(); ch != nil {
+				fields = append(fields,
+					log.Int("current_channel_id", ch.ID),
+					log.String("current_channel_name", ch.Name),
+				)
+			}
+
+			log.Error(ctx, "response protection alarm: all failover channels exhausted", fields...)
+		}
+
 		// Update the last request execution status based on error if it exists
 		// This ensures that when retry fails completely, the last execution is properly marked
 		if requestExec := outbound.GetRequestExecution(); requestExec != nil {

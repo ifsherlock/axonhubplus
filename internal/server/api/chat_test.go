@@ -427,6 +427,18 @@ func TestWrapQuotaExhaustedAsResponseError_OtherError(t *testing.T) {
 	assert.Equal(t, otherErr, result, "non-quota errors should pass through unchanged")
 }
 
+func TestWrapResponseProtectionFailoverAsResponseError(t *testing.T) {
+	result := wrapResponseProtectionFailoverAsResponseError(pipeline.WrapUpstreamError(biz.ErrResponseProtectionFailover))
+
+	respErr := &llm.ResponseError{}
+	require.True(t, errors.As(result, &respErr))
+	assert.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+	assert.Equal(t, responseProtectionAlarmMessage, respErr.Detail.Message)
+	assert.Equal(t, responseProtectionAlarmType, respErr.Detail.Type)
+	assert.Equal(t, responseProtectionAlarmCode, respErr.Detail.Code)
+	assert.NotContains(t, respErr.Error(), "REQUEST_BLOCKED")
+}
+
 func TestPlaygroundHandleError_QuotaExhausted_Returns503(t *testing.T) {
 	handlers := &PlaygroundHandlers{}
 

@@ -108,6 +108,7 @@ export function mergeChannelSettingsForUpdate(
     proxy: pick('proxy', existing?.proxy ?? null),
     transformOptions: pick('transformOptions', existing?.transformOptions ?? undefined),
     passThroughUserAgent: pick('passThroughUserAgent', existing?.passThroughUserAgent ?? null),
+    customUserAgent: pick('customUserAgent', existing?.customUserAgent ?? ''),
     passThroughBody: pick('passThroughBody', existing?.passThroughBody ?? null),
     rateLimit: pick('rateLimit', existing?.rateLimit ?? null),
     retryableStatusCodes: pick('retryableStatusCodes', existing?.retryableStatusCodes ?? []),

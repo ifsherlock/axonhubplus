@@ -16,6 +16,10 @@ var (
 	ErrResponseProtectionFailover = errors.New("response rejected, trigger channel failover")
 )
 
+func IsResponseProtectionFailover(err error) bool {
+	return errors.Is(err, ErrResponseProtectionFailover)
+}
+
 type ResponseProtectionResult struct {
 	Response     *llm.Response
 	MatchedRules []*ent.ResponseProtectionRule

@@ -1362,10 +1362,27 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 	tests := []struct {
 		name             string
 		channelUASetting *bool // Channel-level override
-		globalUAEnabled  bool  // System-level setting
+		customUA         string
+		globalUAEnabled  bool // System-level setting
 		clientUA         string
 		wantUAHeader     string
 	}{
+		{
+			name:             "custom_ua_overrides_enabled_pass_through",
+			channelUASetting: new(true),
+			customUA:         "CustomClient/9.9",
+			globalUAEnabled:  true,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "CustomClient/9.9",
+		},
+		{
+			name:             "custom_ua_overrides_disabled_pass_through",
+			channelUASetting: new(false),
+			customUA:         "CustomClient/9.9",
+			globalUAEnabled:  false,
+			clientUA:         "Client/1.0",
+			wantUAHeader:     "CustomClient/9.9",
+		},
 		{
 			name:             "channel_disabled_ignores_global",
 			channelUASetting: new(false),
@@ -1419,6 +1436,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			if tt.channelUASetting != nil {
 				channelSettings.PassThroughUserAgent = tt.channelUASetting
 			}
+			channelSettings.CustomUserAgent = tt.customUA
 
 			channel := &biz.Channel{
 				Channel: &ent.Channel{

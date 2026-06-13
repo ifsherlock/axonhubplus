@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/tidwall/sjson"
@@ -190,6 +191,14 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 		// the correct User-Agent is logged in request execution records.
 		if request.Headers == nil {
 			request.Headers = make(http.Header)
+		}
+
+		if channel.Settings != nil {
+			customUA := strings.TrimSpace(channel.Settings.CustomUserAgent)
+			if customUA != "" {
+				request.Headers.Set("User-Agent", customUA)
+				return request, nil
+			}
 		}
 
 		if passThroughEnabled {

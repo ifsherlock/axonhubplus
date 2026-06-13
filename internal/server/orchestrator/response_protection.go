@@ -15,6 +15,18 @@ import (
 
 const responseProtectionRejectedMessage = "response blocked by response protection policy"
 
+func responseProtectionRejectionError() error {
+	return fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, responseProtectionRejectedMessage)
+}
+
+func responseProtectionFailoverError(ctx context.Context, err error) error {
+	log.Error(ctx, "response protection rejected upstream response, triggering channel failover",
+		log.Cause(err),
+	)
+
+	return pipeline.WrapUpstreamError(err)
+}
+
 func protectResponses(inbound *PersistentInboundTransformer) pipeline.Middleware {
 	return pipeline.OnLlmResponse("protect-responses", func(ctx context.Context, llmResponse *llm.Response) (*llm.Response, error) {
 		if inbound.state.ResponseProtecter == nil {
@@ -24,11 +36,11 @@ func protectResponses(inbound *PersistentInboundTransformer) pipeline.Middleware
 		protected, err := inbound.state.ResponseProtecter.Protect(ctx, llmResponse)
 		if err != nil {
 			if errors.Is(err, biz.ErrResponseProtectionFailover) {
-				return nil, pipeline.WrapUpstreamError(err)
+				return nil, responseProtectionFailoverError(ctx, err)
 			}
 
 			if errors.Is(err, biz.ErrResponseProtectionRejected) {
-				return nil, fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, responseProtectionRejectedMessage)
+				return nil, responseProtectionRejectionError()
 			}
 
 			log.Warn(ctx, "failed to protect response", log.Cause(err))
@@ -64,11 +76,11 @@ func protectResponseStream(inbound *PersistentInboundTransformer) pipeline.Middl
 				stream.Close()
 
 				if errors.Is(err, biz.ErrResponseProtectionFailover) {
-					return nil, pipeline.WrapUpstreamError(err)
+					return nil, responseProtectionFailoverError(ctx, err)
 				}
 
 				if errors.Is(err, biz.ErrResponseProtectionRejected) {
-					return nil, fmt.Errorf("%w: %s", transformer.ErrInvalidRequest, responseProtectionRejectedMessage)
+					return nil, responseProtectionRejectionError()
 				}
 
 				log.Warn(ctx, "failed to protect response stream", log.Cause(err))
@@ -88,18 +100,26 @@ func protectResponseStream(inbound *PersistentInboundTransformer) pipeline.Middl
 			return nil, err
 		}
 
-		rest := streams.Map(stream, func(event *llm.Response) *llm.Response {
+		rest := streams.MapErr(stream, func(event *llm.Response) (*llm.Response, error) {
 			protected, err := inbound.state.ResponseProtecter.Protect(ctx, event)
 			if err != nil {
+				if errors.Is(err, biz.ErrResponseProtectionFailover) {
+					return nil, responseProtectionFailoverError(ctx, err)
+				}
+
+				if errors.Is(err, biz.ErrResponseProtectionRejected) {
+					return nil, responseProtectionRejectionError()
+				}
+
 				log.Warn(ctx, "failed to protect response stream event", log.Cause(err))
-				return event
+				return event, nil
 			}
 
 			if protected == nil {
-				return event
+				return event, nil
 			}
 
-			return protected
+			return protected, nil
 		})
 
 		return streams.PrependStream(rest, buffered...), nil

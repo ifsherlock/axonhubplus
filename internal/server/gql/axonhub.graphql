@@ -108,6 +108,7 @@ type ChannelSettings {
   headerOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
   bodyOverrideOperations: [OverrideOperation!]! @goField(forceResolver: true)
   passThroughUserAgent: Boolean
+  customUserAgent: String
   passThroughBody: Boolean
   rateLimit: ChannelRateLimit
   retryableStatusCodes: [Int!]
@@ -144,6 +145,7 @@ input ChannelSettingsInput {
   headerOverrideOperations: [OverrideOperationInput!]
   bodyOverrideOperations: [OverrideOperationInput!]
   passThroughUserAgent: Boolean
+  customUserAgent: String
   passThroughBody: Boolean
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
