@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
@@ -99,8 +101,16 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		adminGroup.GET("/playground", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Playground.ServeHTTP(c.Writer, c.Request)
 		})
-		adminGroup.POST("/graphql", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
-			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
+		adminGroup.POST("/graphql", func(c *gin.Context) {
+			timeout := server.Config.RequestTimeout
+			if gql.IsMultipartRequest(c.Request) {
+				timeout = gql.GraphqlUploadTimeout
+			}
+
+			ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
+			defer cancel()
+
+			handlers.Graphql.Serve(ctx, c.Writer, c.Request)
 		})
 
 		adminGroup.POST("/codex/oauth/start", handlers.Codex.StartOAuth)

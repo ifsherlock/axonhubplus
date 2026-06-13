@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mime"
 	"net/http"
+	"time"
 
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent/privacy"
@@ -88,6 +90,12 @@ type GraphqlHandler struct {
 	Playground http.Handler
 }
 
+const (
+	graphqlUploadMaxSize   = 256 << 20
+	graphqlUploadMaxMemory = 32 << 20
+	GraphqlUploadTimeout   = 10 * time.Minute
+)
+
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv := handler.New(
 		NewSchema(
@@ -127,7 +135,10 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})
 	gqlSrv.AddTransport(transport.POST{})
-	gqlSrv.AddTransport(transport.MultipartForm{})
+	gqlSrv.AddTransport(transport.MultipartForm{
+		MaxUploadSize: graphqlUploadMaxSize,
+		MaxMemory:     graphqlUploadMaxMemory,
+	})
 
 	gqlSrv.SetQueryCache(lru.New[*ast.QueryDocument](1024))
 
@@ -177,6 +188,15 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		Graphql:    gqlSrv,
 		Playground: playground.Handler("AxonHub", "/admin/graphql"),
 	}
+}
+
+func (h *GraphqlHandler) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	h.Graphql.ServeHTTP(w, r.WithContext(ctx))
+}
+
+func IsMultipartRequest(r *http.Request) bool {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return err == nil && r.Method == http.MethodPost && mediaType == "multipart/form-data"
 }
 
 var guidTypeToNodeType = map[string]string{

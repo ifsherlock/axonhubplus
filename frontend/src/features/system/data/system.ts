@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { graphqlRequest } from '@/gql/graphql';
+import { GRAPHQL_ENDPOINT, graphqlRequest } from '@/gql/graphql';
 import { toast } from 'sonner';
 import { getTokenFromStorage } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
@@ -1229,6 +1229,50 @@ export interface RestorePayload {
   message?: string;
 }
 
+function getRestoreErrorMessage(error: unknown): string {
+  if (error instanceof TypeError) {
+    return i18n.t('system.restore.networkError');
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return i18n.t('system.restore.failed');
+}
+
+async function parseRestoreResponse(response: Response): Promise<RestorePayload> {
+  const contentType = response.headers.get('content-type') || '';
+  const isJSON = contentType.includes('application/json');
+  const result = isJSON ? await response.json() : null;
+
+  if (response.status === 401 || response.status === 403) {
+    throw new Error(i18n.t('system.restore.unauthorized'));
+  }
+
+  if (!response.ok) {
+    const message =
+      result?.errors?.[0]?.message ||
+      result?.error?.message ||
+      i18n.t('system.restore.httpError', { status: response.status });
+    throw new Error(message);
+  }
+
+  if (!isJSON) {
+    throw new Error(i18n.t('system.restore.nonJsonResponse'));
+  }
+
+  if (result.errors) {
+    throw new Error(result.errors[0]?.message || i18n.t('system.restore.failed'));
+  }
+
+  if (!result.data?.restore) {
+    throw new Error(i18n.t('system.restore.invalidResponse'));
+  }
+
+  return result.data.restore as RestorePayload;
+}
+
 export function useBackup() {
   return useMutation({
     mutationFn: async (input: BackupOptionsInput) => {
@@ -1275,19 +1319,20 @@ export function useRestore() {
       formData.append('0', file);
 
       const token = getTokenFromStorage();
-      const response = await fetch('/admin/graphql', {
-        method: 'POST',
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
-      if (result.errors) {
-        throw new Error(result.errors[0].message);
+      let response: Response;
+      try {
+        response = await fetch(GRAPHQL_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+          body: formData,
+        });
+      } catch (error) {
+        throw new Error(getRestoreErrorMessage(error));
       }
-      return result.data.restore as RestorePayload;
+
+      return parseRestoreResponse(response);
     },
     onSuccess: (data) => {
       if (data.success) {
